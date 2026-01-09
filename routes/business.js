@@ -257,5 +257,22 @@ router.get('/admin/public-listings', async (req, res) => {
   }
 });
 
+// Get single business by ID (PUBLIC)
+router.get('/:id', async (req, res) => {
+  try {
+    const business = await Business.findById(req.params.id);
+
+    if (!business) {
+      return res.status(404).json({ message: 'Business not found' });
+    }
+
+    res.json(business);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 
 module.exports = router;
