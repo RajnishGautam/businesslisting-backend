@@ -71,6 +71,11 @@ const BusinessSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  slug: {
+    type: String,
+    unique: true,
+    sparse: true // Allows null values temporarily during migration
+  },
   isAdminListing: {
     type: Boolean,
     default: false
