@@ -3,6 +3,14 @@ const router = express.Router();
 const Business = require('../models/Business');
 const { auth, adminAuth } = require('../middleware/auth');
 
+// Helper function to create slug
+const createSlug = (text) => {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+};
+
 // Create business listing (USER)
 router.post('/', auth, async (req, res) => {
   try {
@@ -19,6 +27,9 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ message: 'You already have a business listing. Please edit your existing listing.' });
     }
 
+    // Create slug
+    const slug = `${createSlug(city)}/${createSlug(category)}/${createSlug(businessName)}`;
+
     // Create new business
     const business = new Business({
       userId: req.user.id,
@@ -30,6 +41,7 @@ router.post('/', auth, async (req, res) => {
       address,
       city,
       image,
+      slug,
       isAdminListing: false
     });
 
@@ -52,6 +64,9 @@ router.post('/admin', adminAuth, async (req, res) => {
       return res.status(400).json({ message: 'Please fill all fields' });
     }
 
+    // Create slug
+    const slug = `${createSlug(city)}/${createSlug(category)}/${createSlug(businessName)}`;
+
     // Create new business by admin
     const business = new Business({
       userId: req.user.id,
@@ -63,6 +78,7 @@ router.post('/admin', adminAuth, async (req, res) => {
       address,
       city,
       image,
+      slug,
       isAdminListing: true
     });
 
@@ -165,6 +181,11 @@ router.put('/:id', auth, async (req, res) => {
     business.image = image || business.image;
     business.updatedAt = Date.now();
 
+    // Update slug if name, category, or city changed
+    if (businessName || category || city) {
+      business.slug = `${createSlug(business.city)}/${createSlug(business.category)}/${createSlug(business.businessName)}`;
+    }
+
     await business.save();
 
     res.json({ message: 'Business updated successfully', business });
@@ -196,6 +217,11 @@ router.put('/admin/:id', adminAuth, async (req, res) => {
     business.city = city || business.city;
     business.image = image || business.image;
     business.updatedAt = Date.now();
+
+    // Update slug if name, category, or city changed
+    if (businessName || category || city) {
+      business.slug = `${createSlug(business.city)}/${createSlug(business.category)}/${createSlug(business.businessName)}`;
+    }
 
     await business.save();
 
@@ -246,6 +272,7 @@ router.delete('/admin/:id', adminAuth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 // Get all admin listings (PUBLIC)
 router.get('/admin/public-listings', async (req, res) => {
   try {
@@ -257,10 +284,13 @@ router.get('/admin/public-listings', async (req, res) => {
   }
 });
 
-// Get single business by ID (PUBLIC)
-router.get('/:id', async (req, res) => {
+// Get single business by SLUG (PUBLIC) - MUST be last
+router.get('/:city/:category/:name', async (req, res) => {
   try {
-    const business = await Business.findById(req.params.id);
+    const { city, category, name } = req.params;
+    const slug = `${city}/${category}/${name}`;
+    
+    const business = await Business.findOne({ slug });
 
     if (!business) {
       return res.status(404).json({ message: 'Business not found' });
@@ -272,7 +302,5 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-
 
 module.exports = router;
